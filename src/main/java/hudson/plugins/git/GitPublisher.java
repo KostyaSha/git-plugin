@@ -34,6 +34,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
+import javax.annotation.CheckForNull;
 import javax.servlet.ServletException;
 import java.io.IOException;
 import java.io.Serializable;
@@ -185,7 +186,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
         SCM scm = build.getProject().getScm();
 
         if (!(scm instanceof GitSCM)) {
-            return false;
+            return true; // just skip this publisher
         }
 
         final GitSCM gitSCM = (GitSCM) scm;
@@ -245,11 +246,9 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
                         //git.push(null);
                     }
                 } catch (FormException e) {
-                    e.printStackTrace(listener.error("Failed to push merge to origin repository"));
-                    return false;
+                    throw new AbortException("Failed to push merge to origin repository.\n" + e.getMessage());
                 } catch (GitException e) {
-                    e.printStackTrace(listener.error("Failed to push merge to origin repository"));
-                    return false;
+                    throw new AbortException("Failed to push merge to origin repository\n" + e.getMessage());
                 }
             }
 
@@ -297,8 +296,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
                         }
                         push.execute();
                     } catch (GitException e) {
-                        e.printStackTrace(listener.error("Failed to push tag " + tagName + " to " + targetRepo));
-                        return false;
+                        throw new AbortException("Failed to push tag " + tagName + " to " + targetRepo + "\n" + e.getMessage());
                     }
                 }
             }
@@ -329,8 +327,8 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
                         }
                         push.execute();
                     } catch (GitException e) {
-                        e.printStackTrace(listener.error("Failed to push branch " + branchName + " to " + targetRepo));
-                        return false;
+                        throw new AbortException("Failed to push HEAD to " + branchName
+                                                 + " to " + targetRepo + "\n" + e.getMessage());
                     }
                 }
             }
@@ -351,8 +349,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
                         RemoteConfig remote = gitSCM.getRepositoryByName(targetRepo);
 
                         if (remote == null) {
-                            listener.getLogger().println("No repository found for target repo name " + targetRepo);
-                            return false;
+                            throw new AbortException("No repository found for target repo name " + targetRepo);
                         }
 
                         listener.getLogger().println("Adding note to namespace \""+noteNamespace +"\":\n" + noteMsg + "\n******" );
@@ -369,8 +366,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
                         }
                         push.execute();
                     } catch (GitException e) {
-                        e.printStackTrace(listener.error("Failed to add note: \n" + noteMsg  + "\n******"));
-                        return false;
+                        throw new AbortException("Failed to add note: \n" + noteMsg  + "\n******\n" + e.getMessage());
                     }
                 }
             }
