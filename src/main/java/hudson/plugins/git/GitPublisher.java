@@ -251,6 +251,38 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
                     throw new AbortException("Failed to push merge to origin repository\n" + e.getMessage());
                 }
             }
+            // for msm push branches before tags
+            if (isPushBranches()) {
+                for (final BranchToPush b : branchesToPush) {
+                    if (b.getBranchName() == null)
+                        throw new AbortException("No branch to push defined");
+
+                    if (b.getTargetRepoName() == null)
+                        throw new AbortException("No branch repo to push to defined");
+
+                    final String branchName = environment.expand(b.getBranchName());
+                    final String targetRepo = environment.expand(b.getTargetRepoName());
+
+                    try {
+                        RemoteConfig remote = gitSCM.getRepositoryByName(targetRepo);
+
+                        if (remote == null)
+                            throw new AbortException("No repository found for target repo name " + targetRepo);
+
+                        listener.getLogger().println("Pushing HEAD to branch " + branchName + " at repo "
+                                + targetRepo);
+                        remoteURI = remote.getURIs().get(0);
+                        PushCommand push = git.push().to(remoteURI).ref("HEAD:" + branchName);
+                        if (forcePush) {
+                            push.force();
+                        }
+                        push.execute();
+                    } catch (GitException e) {
+                        throw new AbortException("Failed to push HEAD to " + branchName
+                                + " to " + targetRepo + "\n" + e.getMessage());
+                    }
+                }
+            }
 
             if (isPushTags()) {
                 for (final TagToPush t : tagsToPush) {
@@ -301,38 +333,6 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
                 }
             }
             
-            if (isPushBranches()) {
-                for (final BranchToPush b : branchesToPush) {
-                    if (b.getBranchName() == null)
-                        throw new AbortException("No branch to push defined");
-
-                    if (b.getTargetRepoName() == null)
-                        throw new AbortException("No branch repo to push to defined");
-
-                    final String branchName = environment.expand(b.getBranchName());
-                    final String targetRepo = environment.expand(b.getTargetRepoName());
-                    
-                    try {
-                        RemoteConfig remote = gitSCM.getRepositoryByName(targetRepo);
-
-                        if (remote == null)
-                            throw new AbortException("No repository found for target repo name " + targetRepo);
-
-                        listener.getLogger().println("Pushing HEAD to branch " + branchName + " at repo "
-                                                     + targetRepo);
-                        remoteURI = remote.getURIs().get(0);
-                        PushCommand push = git.push().to(remoteURI).ref("HEAD:" + branchName);
-                        if (forcePush) {
-                          push.force();
-                        }
-                        push.execute();
-                    } catch (GitException e) {
-                        throw new AbortException("Failed to push HEAD to " + branchName
-                                                 + " to " + targetRepo + "\n" + e.getMessage());
-                    }
-                }
-            }
-                     
             if (isPushNotes()) {
                 for (final NoteToPush b : notesToPush) {
                     if (b.getnoteMsg() == null)
