@@ -738,7 +738,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         return createClient(listener,environment, build.getParent(), GitUtils.workspaceToNode(workspace), ws);
     }
 
-    /*package*/ GitClient createClient(TaskListener listener, EnvVars environment, Job project, Node n, FilePath ws) throws IOException, InterruptedException {
+    protected GitClient createClient(TaskListener listener, EnvVars environment, Job project, Node n, FilePath ws) throws IOException, InterruptedException {
 
         String gitExe = getGitExe(n, listener);
         Git git = Git.with(listener, environment).in(ws).using(gitExe);
